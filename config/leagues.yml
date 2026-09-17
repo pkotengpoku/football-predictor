@@ -1,0 +1,19 @@
+leagues:
+  E0: Premier League
+  I1: Serie A
+  SP1: La Liga
+  D1: Bundesliga
+  F1: Ligue 1
+
+seasons:
+  - "1718"
+  - "1819"
+  - "1920"
+  - "2021"
+  - "2122"
+  - "2223"
+  - "2324"
+  - "2425"
+  - "2526"
+
+current_season: "2627"
