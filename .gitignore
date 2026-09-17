@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+data/raw/*.csv
+data/processed/*.parquet
+data/*.duckdb
+models/*.joblib
+reports/*.csv
+reports/*.png
