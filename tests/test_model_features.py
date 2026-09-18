@@ -31,7 +31,7 @@ def test_model_uses_only_pre_match_features():
         "home_rest_days": [6],
         "away_matches_seen": [10],
         "league_avg_goals": [2.75],
-        "poisson_expected_total": [2.91],
+        "poisson_expected_total": [2.91],\n        "poisson_prob_over25": [0.56],\n        "home_elo": [1512.0],\n        "elo_diff": [24.0],\n        "market_prob_close_over": [0.55],
     })
 
     numeric, categorical = feature_columns(df)
@@ -47,7 +47,7 @@ def test_model_uses_only_pre_match_features():
     assert "total_goals" not in selected
     assert "over_2_5" not in selected
     assert "odds_over_25" not in selected
-    assert "market_prob_over" not in selected
+    assert "market_prob_over" not in selected\n    assert "market_prob_close_over" not in selected
 
     # Historical rolling features and pre-match context are allowed.
     assert "home_shots_5" in selected
@@ -59,5 +59,5 @@ def test_model_uses_only_pre_match_features():
     assert "home_rest_days" in selected
     assert "away_matches_seen" in selected
     assert "league_avg_goals" in selected
-    assert "poisson_expected_total" in selected
+    assert "poisson_expected_total" in selected\n    assert "poisson_prob_over25" in selected\n    assert "home_elo" in selected\n    assert "elo_diff" in selected
     assert categorical == ["league"]
