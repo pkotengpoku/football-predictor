@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/belgium-experiment.yml"
 
+permissions:
+  contents: write
+
 jobs:
   backtest-belgium:
     runs-on: ubuntu-latest
@@ -78,6 +81,44 @@ jobs:
               rows.append(row)
           print(pd.DataFrame(rows).sort_values("brier").to_string(index=False))
           PY
+
+      - name: Persist Belgium reports in repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p experiments/belgium
+          cp reports/walk_forward_metrics.csv experiments/belgium/walk_forward_metrics.csv
+          cp reports/walk_forward_predictions.csv experiments/belgium/walk_forward_predictions.csv
+          cp reports/v4_subgroup_metrics.csv experiments/belgium/v4_subgroup_metrics.csv
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+          df = pd.read_csv("reports/walk_forward_metrics.csv")
+          rows=[]
+          for model,g in df.groupby("model"):
+              w=g["n_test"].fillna(0).astype(float)
+              if w.sum()==0:
+                  continue
+              row={"model":model,"matches":int(w.sum())}
+              for col in ["brier","log_loss","roc_auc","accuracy"]:
+                  if col in g and g[col].notna().any():
+                      mask=g[col].notna()
+                      row[col]=(g.loc[mask,col]*w[mask]).sum()/w[mask].sum()
+              if "bets" in g:
+                  row["bets"]=int(g["bets"].fillna(0).sum())
+              if "roi" in g and g["roi"].notna().any():
+                  bw=g["bets"].fillna(0).astype(float)
+                  mask=g["roi"].notna() & (bw>0)
+                  row["roi"]=(g.loc[mask,"roi"]*bw[mask]).sum()/bw[mask].sum() if mask.any() else float("nan")
+              rows.append(row)
+          summary=pd.DataFrame(rows).sort_values("brier")
+          Path("experiments/belgium/summary.txt").write_text(summary.to_string(index=False)+"\n", encoding="utf-8")
+          PY
+          git config user.name "football-predictor-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f experiments/belgium
+          git commit -m "Save Belgium B1 experiment results" || exit 0
+          git push origin HEAD:main
 
       - name: Upload Belgium reports
         uses: actions/upload-artifact@v4
