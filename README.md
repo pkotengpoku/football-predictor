@@ -1,8 +1,8 @@
-# Football Predictor V2 — Over/Under 2.5 Goals
+# Football Predictor V3 — Over/Under 2.5 Goals
 
 A leakage-safe football probability model for predicting whether a match will finish with **3+ total goals**.
 
-## V2 design
+## V3 design
 
 - Target: `Over 2.5 goals`
 - Leagues: Premier League, Serie A, La Liga, Bundesliga, Ligue 1
