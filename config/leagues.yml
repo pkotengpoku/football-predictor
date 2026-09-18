@@ -4,6 +4,7 @@ leagues:
   SP1: La Liga
   D1: Bundesliga
   F1: Ligue 1
+  B1: Jupiler Pro League
 
 seasons:
   - "1718"
