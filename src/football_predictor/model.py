@@ -16,16 +16,40 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from .config import MODEL_DIR, PROCESSED_DIR, REPORT_DIR
 
-EXCLUDED = {
-    "date", "season", "home_team", "away_team", "home_goals", "away_goals",
-    "total_goals", "over_2_5", "odds_over_25", "odds_under_25", "market_prob_over"
+# Use an explicit allow-list for model inputs. This is safer than excluding known
+# post-match columns because new raw columns could otherwise become accidental
+# features and leak information from the match being predicted.
+SAFE_NUMERIC_EXACT = {
+    "home_rest_days",
+    "away_rest_days",
+    "home_matches_seen",
+    "away_matches_seen",
+    "league_avg_goals",
+    "poisson_expected_total",
 }
+
+SAFE_NUMERIC_PREFIXES = (
+    "home_gf_",
+    "home_ga_",
+    "home_shots_",
+    "home_sot_",
+    "home_over25_rate_",
+    "home_points_",
+    "away_gf_",
+    "away_ga_",
+    "away_shots_",
+    "away_sot_",
+    "away_over25_rate_",
+    "away_points_",
+)
 
 
 def feature_columns(df: pd.DataFrame) -> tuple[list[str], list[str]]:
-    cols = [c for c in df.columns if c not in EXCLUDED]
-    categorical = [c for c in cols if df[c].dtype == "object" or c == "league"]
-    numeric = [c for c in cols if c not in categorical]
+    numeric = [
+        c for c in df.columns
+        if c in SAFE_NUMERIC_EXACT or c.startswith(SAFE_NUMERIC_PREFIXES)
+    ]
+    categorical = ["league"] if "league" in df.columns else []
     return numeric, categorical
 
 
