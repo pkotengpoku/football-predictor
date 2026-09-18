@@ -148,6 +148,10 @@ def _all_prediction_rows(
         "actual_over25": test.over_2_5.astype(int).to_numpy(),
         "opening_market": test.market_prob_open_over.to_numpy(),
         "closing_market": test.market_prob_close_over.to_numpy(),
+        "opening_odds_over": test.odds_over_25_open.to_numpy(),
+        "opening_odds_under": test.odds_under_25_open.to_numpy(),
+        "closing_odds_over": test.odds_over_25_close.to_numpy(),
+        "closing_odds_under": test.odds_under_25_close.to_numpy(),
         "poisson_probability": test.poisson_prob_over25.to_numpy(),
         "football_probability": football_probability,
         "residual_delta_logit": delta_logit,
@@ -350,6 +354,17 @@ def _subgroup_metric_row(
         scored = frame.loc[valid_prob]
         ev = evaluate(scored.actual_over25, scored.residual_probability.to_numpy())
         row.update(ev)
+
+    valid_open = frame.opening_market.notna()
+    if valid_open.any():
+        opened = frame.loc[valid_open]
+        opening_ev = evaluate(opened.actual_over25, opened.opening_market.to_numpy())
+        row["opening_brier"] = opening_ev["brier"]
+        row["opening_log_loss"] = opening_ev["log_loss"]
+        row["opening_roc_auc"] = opening_ev["roc_auc"]
+        if "brier" in row:
+            row["brier_gain_vs_opening"] = opening_ev["brier"] - float(row["brier"])
+            row["logloss_gain_vs_opening"] = opening_ev["log_loss"] - float(row["log_loss"])
 
     bets = frame[frame.bet_side.ne("none") & frame.profit.notna()]
     row["bets"] = int(len(bets))
