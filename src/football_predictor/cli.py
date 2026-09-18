@@ -6,7 +6,7 @@ import pandas as pd
 from .config import PROCESSED_DIR, REPORT_DIR
 from .download import download_all
 from .features import build_and_save
-from .model import walk_forward
+from .v4 import run_backtest
 
 
 def main() -> None:
@@ -27,12 +27,7 @@ def main() -> None:
         build_and_save()
     elif args.command == "backtest":
         df = pd.read_parquet(PROCESSED_DIR / "matches_features.parquet")
-        report = walk_forward(df)
-        REPORT_DIR.mkdir(parents=True, exist_ok=True)
-        out = REPORT_DIR / "walk_forward_metrics.csv"
-        report.to_csv(out, index=False)
-        print(report.to_string(index=False))
-        print(f"saved -> {out}")
+        run_backtest(df)
 
 
 if __name__ == "__main__":
