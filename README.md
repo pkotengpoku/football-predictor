@@ -1,17 +1,17 @@
-# Football Predictor V1 — Over/Under 2.5 Goals
+# Football Predictor V2 — Over/Under 2.5 Goals
 
 A leakage-safe football probability model for predicting whether a match will finish with **3+ total goals**.
 
-## V1 design
+## V2 design
 
 - Target: `Over 2.5 goals`
 - Leagues: Premier League, Serie A, La Liga, Bundesliga, Ligue 1
 - Historical source: Football-Data.co.uk CSVs
 - Baselines: league historical rate + logistic regression
 - Main model: LightGBM
-- Calibration: isotonic regression on a strictly later validation season
+- Calibration: raw vs Platt/sigmoid vs isotonic, selected chronologically inside the validation season
 - Evaluation: walk-forward backtest
-- Betting layer: market probability, edge, flat-stake ROI and drawdown
+- Betting layer: two-sided Over/Under edge selection, flat-stake ROI, drawdown and closing-line movement
 
 The model deliberately excludes bookmaker odds from the core predictive feature set. Odds are used *after prediction* to evaluate whether the model's estimated probability differs from the market.
 
