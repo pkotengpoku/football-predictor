@@ -5,7 +5,7 @@ A leakage-safe football probability model for predicting whether a match will fi
 ## V4 design
 
 - Target: `Over 2.5 goals`
-- Leagues: Premier League, Serie A, La Liga, Bundesliga, Ligue 1
+- Leagues: Premier League, Serie A, La Liga, Bundesliga, Ligue 1; experimental support for Belgian Jupiler Pro League (B1)
 - Historical source: Football-Data.co.uk CSVs
 - Baselines: league historical rate + logistic regression
 - Main model: LightGBM
@@ -121,3 +121,8 @@ reports/v4_subgroup_metrics.csv
 ```
 
 The match-level file includes opening and closing market probabilities, Poisson and football probabilities, the learned residual correction, final probability, opening edge, closing movement, selected bet side, odds, profit and CLV. The subgroup file breaks performance out by league, bet side and absolute edge size.
+
+
+## Belgium experiment
+
+Belgian Jupiler Pro League (`B1`) is supported as a smaller-market research league. Keep Belgium isolated when comparing market efficiency: train/validate/test on B1 only rather than pooling it with the Big Five. The main research question is whether leakage-safe football features can improve the first recorded market probability or anticipate the later closing line.
