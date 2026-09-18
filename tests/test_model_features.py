@@ -22,6 +22,7 @@ def test_model_uses_only_pre_match_features():
         "over_2_5": [1],
         "odds_over_25": [1.80],
         "market_prob_over": [0.55],
+        "market_prob_close_over": [0.55],
         "home_shots_5": [12.4],
         "away_shots_10": [9.7],
         "home_sot_5": [4.8],
@@ -31,13 +32,15 @@ def test_model_uses_only_pre_match_features():
         "home_rest_days": [6],
         "away_matches_seen": [10],
         "league_avg_goals": [2.75],
-        "poisson_expected_total": [2.91],\n        "poisson_prob_over25": [0.56],\n        "home_elo": [1512.0],\n        "elo_diff": [24.0],\n        "market_prob_close_over": [0.55],
+        "poisson_expected_total": [2.91],
+        "poisson_prob_over25": [0.56],
+        "home_elo": [1512.0],
+        "elo_diff": [24.0],
     })
 
     numeric, categorical = feature_columns(df)
     selected = set(numeric + categorical)
 
-    # Current-match/post-match information must never be model input.
     assert "home_shots" not in selected
     assert "away_shots" not in selected
     assert "home_sot" not in selected
@@ -47,9 +50,9 @@ def test_model_uses_only_pre_match_features():
     assert "total_goals" not in selected
     assert "over_2_5" not in selected
     assert "odds_over_25" not in selected
-    assert "market_prob_over" not in selected\n    assert "market_prob_close_over" not in selected
+    assert "market_prob_over" not in selected
+    assert "market_prob_close_over" not in selected
 
-    # Historical rolling features and pre-match context are allowed.
     assert "home_shots_5" in selected
     assert "away_shots_10" in selected
     assert "home_sot_5" in selected
@@ -59,5 +62,8 @@ def test_model_uses_only_pre_match_features():
     assert "home_rest_days" in selected
     assert "away_matches_seen" in selected
     assert "league_avg_goals" in selected
-    assert "poisson_expected_total" in selected\n    assert "poisson_prob_over25" in selected\n    assert "home_elo" in selected\n    assert "elo_diff" in selected
+    assert "poisson_expected_total" in selected
+    assert "poisson_prob_over25" in selected
+    assert "home_elo" in selected
+    assert "elo_diff" in selected
     assert categorical == ["league"]
