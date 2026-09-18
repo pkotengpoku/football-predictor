@@ -100,61 +100,117 @@ def build_features(matches: pd.DataFrame) -> pd.DataFrame:
     league_goal_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=380))
     rows: list[dict] = []
 
-    for row in matches.itertuples(index=False):
-        home_state = team_states[(row.league, row.home_team)]
-        away_state = team_states[(row.league, row.away_team)]
+    matches = matches.sort_values(["date", "league", "home_team", "away_team"]).reset_index(drop=True)
 
-        feat = row._asdict()
-        feat.update(_state_features(home_state, "home", row.date))
-        feat.update(_state_features(away_state, "away", row.date))
+    # Process a whole calendar date before applying any of that date's results.
+    # Football-Data does not always provide reliable kickoff times, so this
+    # prevents same-day outcomes from leaking into another same-day prediction.
+    for _, day_matches in matches.groupby("date", sort=True):
+        pending_updates = []
 
-        hist = league_goal_history[row.league]
-        league_avg_total = float(np.mean(hist)) if hist else np.nan
-        feat["league_avg_goals"] = league_avg_total
+        for row in day_matches.itertuples(index=False):
+            home_state = team_states[(row.league, row.home_team)]
+            away_state = team_states[(row.league, row.away_team)]
 
-        league_avg_team = league_avg_total / 2 if pd.notna(league_avg_total) and league_avg_total > 0 else np.nan
-        if pd.notna(league_avg_team):
-            home_attack = feat["home_gf_5"] / league_avg_team if pd.notna(feat["home_gf_5"]) else np.nan
-            away_attack = feat["away_gf_5"] / league_avg_team if pd.notna(feat["away_gf_5"]) else np.nan
-            home_def = feat["home_ga_5"] / league_avg_team if pd.notna(feat["home_ga_5"]) else np.nan
-            away_def = feat["away_ga_5"] / league_avg_team if pd.notna(feat["away_ga_5"]) else np.nan
-            exp_home = league_avg_team * home_attack * away_def if pd.notna(home_attack) and pd.notna(away_def) else np.nan
-            exp_away = league_avg_team * away_attack * home_def if pd.notna(away_attack) and pd.notna(home_def) else np.nan
-            feat["poisson_expected_total"] = exp_home + exp_away if pd.notna(exp_home) and pd.notna(exp_away) else np.nan
-        else:
-            feat["poisson_expected_total"] = np.nan
+            feat = row._asdict()
+            feat.update(_state_features(home_state, "home", row.date))
+            feat.update(_state_features(away_state, "away", row.date))
 
-        if pd.notna(row.odds_over_25) and pd.notna(row.odds_under_25) and row.odds_over_25 > 1 and row.odds_under_25 > 1:
-            p_over = 1 / row.odds_over_25
-            p_under = 1 / row.odds_under_25
-            feat["market_prob_over"] = p_over / (p_over + p_under)
-        else:
-            feat["market_prob_over"] = np.nan
+            hist = league_goal_history[row.league]
+            league_avg_total = float(np.mean(hist)) if hist else np.nan
+            feat["league_avg_goals"] = league_avg_total
 
-        rows.append(feat)
+            league_avg_team = (
+                league_avg_total / 2
+                if pd.notna(league_avg_total) and league_avg_total > 0
+                else np.nan
+            )
+            if pd.notna(league_avg_team):
+                home_attack = (
+                    feat["home_gf_5"] / league_avg_team
+                    if pd.notna(feat["home_gf_5"])
+                    else np.nan
+                )
+                away_attack = (
+                    feat["away_gf_5"] / league_avg_team
+                    if pd.notna(feat["away_gf_5"])
+                    else np.nan
+                )
+                home_def = (
+                    feat["home_ga_5"] / league_avg_team
+                    if pd.notna(feat["home_ga_5"])
+                    else np.nan
+                )
+                away_def = (
+                    feat["away_ga_5"] / league_avg_team
+                    if pd.notna(feat["away_ga_5"])
+                    else np.nan
+                )
+                exp_home = (
+                    league_avg_team * home_attack * away_def
+                    if pd.notna(home_attack) and pd.notna(away_def)
+                    else np.nan
+                )
+                exp_away = (
+                    league_avg_team * away_attack * home_def
+                    if pd.notna(away_attack) and pd.notna(home_def)
+                    else np.nan
+                )
+                feat["poisson_expected_total"] = (
+                    exp_home + exp_away
+                    if pd.notna(exp_home) and pd.notna(exp_away)
+                    else np.nan
+                )
+            else:
+                feat["poisson_expected_total"] = np.nan
 
-        total = row.home_goals + row.away_goals
-        over = float(total >= 3)
-        home_points = 3.0 if row.home_goals > row.away_goals else 1.0 if row.home_goals == row.away_goals else 0.0
-        away_points = 3.0 if row.away_goals > row.home_goals else 1.0 if row.home_goals == row.away_goals else 0.0
+            if (
+                pd.notna(row.odds_over_25)
+                and pd.notna(row.odds_under_25)
+                and row.odds_over_25 > 1
+                and row.odds_under_25 > 1
+            ):
+                p_over = 1 / row.odds_over_25
+                p_under = 1 / row.odds_under_25
+                feat["market_prob_over"] = p_over / (p_over + p_under)
+            else:
+                feat["market_prob_over"] = np.nan
 
-        home_state.gf.append(row.home_goals)
-        home_state.ga.append(row.away_goals)
-        home_state.shots.append(row.home_shots)
-        home_state.sot.append(row.home_sot)
-        home_state.over25.append(over)
-        home_state.points.append(home_points)
-        home_state.last_date = row.date
+            rows.append(feat)
+            pending_updates.append((row, home_state, away_state))
 
-        away_state.gf.append(row.away_goals)
-        away_state.ga.append(row.home_goals)
-        away_state.shots.append(row.away_shots)
-        away_state.sot.append(row.away_sot)
-        away_state.over25.append(over)
-        away_state.points.append(away_points)
-        away_state.last_date = row.date
+        # Only now make this date's results available to future dates.
+        for row, home_state, away_state in pending_updates:
+            total = row.home_goals + row.away_goals
+            over = float(total >= 3)
+            home_points = (
+                3.0 if row.home_goals > row.away_goals
+                else 1.0 if row.home_goals == row.away_goals
+                else 0.0
+            )
+            away_points = (
+                3.0 if row.away_goals > row.home_goals
+                else 1.0 if row.home_goals == row.away_goals
+                else 0.0
+            )
 
-        hist.append(total)
+            home_state.gf.append(row.home_goals)
+            home_state.ga.append(row.away_goals)
+            home_state.shots.append(row.home_shots)
+            home_state.sot.append(row.home_sot)
+            home_state.over25.append(over)
+            home_state.points.append(home_points)
+            home_state.last_date = row.date
+
+            away_state.gf.append(row.away_goals)
+            away_state.ga.append(row.home_goals)
+            away_state.shots.append(row.away_shots)
+            away_state.sot.append(row.away_sot)
+            away_state.over25.append(over)
+            away_state.points.append(away_points)
+            away_state.last_date = row.date
+
+            league_goal_history[row.league].append(total)
 
     return pd.DataFrame(rows)
 
