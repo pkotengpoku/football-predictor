@@ -1,0 +1,90 @@
+name: Belgium B1 Experiment
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/belgium-experiment.yml"
+
+jobs:
+  backtest-belgium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Download Belgian Jupiler Pro League history
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/raw
+          BASE="https://raw.githubusercontent.com/wlrwx/football-engine/a0a7cb770d547bd58449082c782b6b7cb14bc2e5/data/historical/football_data"
+          for season in 1718 1819 1920 2021 2122 2223 2324 2425 2526; do
+            echo "Downloading B1 $season"
+            curl -fsSL --retry 4 --retry-delay 2 "$BASE/B1_${season}.csv" -o "data/raw/${season}_B1.csv"
+          done
+          ls -lh data/raw
+
+      - name: Run safety tests
+        run: pytest -q
+
+      - name: Build Belgium-only features
+        run: python run.py features
+
+      - name: Run Belgium-only backtest
+        run: python run.py backtest
+
+      - name: Print focused Belgium summary
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          p = "reports/walk_forward_metrics.csv"
+          df = pd.read_csv(p)
+          keep = [
+              "model","test_season","n_test","brier","log_loss","roc_auc","accuracy",
+              "bets","roi","avg_clv_prob","edge_threshold","blend_weight",
+              "correction_scale","mean_abs_correction","correction_close_corr"
+          ]
+          keep = [c for c in keep if c in df.columns]
+          print("\nBELGIUM_FOCUSED_SUMMARY")
+          print(df[keep].to_string(index=False))
+          print("\nBELGIUM_WEIGHTED_BY_MODEL")
+          rows=[]
+          for model,g in df.groupby("model"):
+              w=g["n_test"].fillna(0).astype(float)
+              if w.sum()==0: continue
+              row={"model":model,"matches":int(w.sum())}
+              for col in ["brier","log_loss","roc_auc","accuracy"]:
+                  if col in g and g[col].notna().any():
+                      mask=g[col].notna()
+                      row[col]=(g.loc[mask,col]*w[mask]).sum()/w[mask].sum()
+              if "bets" in g:
+                  row["bets"]=int(g["bets"].fillna(0).sum())
+              if "roi" in g and g["roi"].notna().any():
+                  bw=g["bets"].fillna(0).astype(float)
+                  mask=g["roi"].notna() & (bw>0)
+                  row["roi"]=(g.loc[mask,"roi"]*bw[mask]).sum()/bw[mask].sum() if mask.any() else float("nan")
+              rows.append(row)
+          print(pd.DataFrame(rows).sort_values("brier").to_string(index=False))
+          PY
+
+      - name: Upload Belgium reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: belgium-b1-reports
+          path: |
+            reports/walk_forward_metrics.csv
+            reports/walk_forward_predictions.csv
+            reports/v4_subgroup_metrics.csv
+          if-no-files-found: error
