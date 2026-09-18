@@ -22,7 +22,7 @@ def _first_existing(df: pd.DataFrame, candidates: list[str]) -> pd.Series:
 
 
 def _parse_date(series: pd.Series) -> pd.Series:
-    return pd.to_datetime(series, dayfirst=True, errors="coerce")
+    return pd.to_datetime(series, format="mixed", dayfirst=True, errors="coerce")
 
 
 def load_raw_matches() -> pd.DataFrame:
