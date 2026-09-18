@@ -1,8 +1,8 @@
-# Football Predictor V3 — Over/Under 2.5 Goals
+# Football Predictor V4 — Over/Under 2.5 Goals
 
 A leakage-safe football probability model for predicting whether a match will finish with **3+ total goals**.
 
-## V3 design
+## V4 design
 
 - Target: `Over 2.5 goals`
 - Leagues: Premier League, Serie A, La Liga, Bundesliga, Ligue 1
@@ -100,3 +100,24 @@ This is intentionally stricter than a random train/test split.
 ## Disclaimer
 
 This is a statistical research project. Good historical backtests do not guarantee profitable future betting results.
+
+
+## V4 market-residual model
+
+V4 treats the opening bookmaker probability as a fixed prior rather than a normal feature:
+
+```text
+final_logit = opening_market_logit + correction_scale * football_correction
+```
+
+The opening-market coefficient is fixed at 1.0. The correction is learned only from leakage-safe football features. A chronological validation split chooses the correction scale; scale `0.0` means the model rejects its own football correction and falls back to the opening market.
+
+The backtest now writes:
+
+```text
+reports/walk_forward_metrics.csv
+reports/walk_forward_predictions.csv
+reports/v4_subgroup_metrics.csv
+```
+
+The match-level file includes opening and closing market probabilities, Poisson and football probabilities, the learned residual correction, final probability, opening edge, closing movement, selected bet side, odds, profit and CLV. The subgroup file breaks performance out by league, bet side and absolute edge size.
